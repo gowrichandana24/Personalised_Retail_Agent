@@ -1,0 +1,51 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Virtual environments
+venv/
+env/
+.venv/
+
+# Environment variables / secrets
+.env
+.env.*
+!.env.example
+
+# Jupyter
+.ipynb_checkpoints/
+
+# RetailRocket / dataset files
+data/*.csv
+data/*.zip
+data/*.parquet
+
+# Generated datasets
+*_enriched_catalog.csv
+*_results.csv
+
+# Models
+models/
+*.pkl
+*.pickle
+*.joblib
+*.pt
+*.pth
+*.onnx
+
+# Logs
+*.log
+logs/
+
+# IDE
+.vscode/
+.idea/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Temporary files
+*.tmp
+*.temp
