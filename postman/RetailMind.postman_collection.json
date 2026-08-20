@@ -1,0 +1,54 @@
+{
+  "info": {
+    "name": "RetailMind Connected Backend",
+    "description": "Tests every module integrated into the RetailMind FastAPI backend.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [{"key": "baseUrl", "value": "http://127.0.0.1:8000"}],
+  "item": [
+    {
+      "name": "Health - all modules",
+      "request": {"method": "GET", "url": "{{baseUrl}}/api/health"}
+    },
+    {
+      "name": "Module integration map",
+      "request": {"method": "GET", "url": "{{baseUrl}}/api/modules"}
+    },
+    {
+      "name": "Agentic AI plan",
+      "request": {
+        "method": "POST",
+        "header": [{"key": "Content-Type", "value": "application/json"}],
+        "body": {"mode": "raw", "raw": "{\n  \"query\": \"Build a casual outfit under ₹3000 and make it different\"\n}"},
+        "url": "{{baseUrl}}/api/agentic-plan"
+      }
+    },
+    {
+      "name": "Customer Intelligence digital twin",
+      "request": {
+        "method": "POST",
+        "header": [{"key": "Content-Type", "value": "application/json"}],
+        "body": {"mode": "raw", "raw": "{\n  \"customer_id\": \"42\",\n  \"events\": [\n    {\"timestamp\": 1720000000000, \"visitorid\": 42, \"event\": \"view\", \"itemid\": 3},\n    {\"timestamp\": 1720001000000, \"visitorid\": 42, \"event\": \"addtocart\", \"itemid\": 3}\n  ],\n  \"item_categories\": [\n    {\"timestamp\": 1719990000000, \"itemid\": 3, \"categoryid\": 101}\n  ]\n}"},
+        "url": "{{baseUrl}}/api/customer-profile"
+      }
+    },
+    {
+      "name": "End-to-end recommendation",
+      "request": {
+        "method": "POST",
+        "header": [{"key": "Content-Type", "value": "application/json"}],
+        "body": {"mode": "raw", "raw": "{\n  \"customer_id\": \"42\",\n  \"query\": \"I need casual shoes under ₹3000\",\n  \"budget\": 3000,\n  \"discovery_level\": 0.4,\n  \"customer_profile\": {\n    \"total_views\": 12,\n    \"total_transactions\": 2,\n    \"top_category_1\": \"footwear\",\n    \"top_category_affinity_1\": 0.9\n  },\n  \"top_k\": 5\n}"},
+        "url": "{{baseUrl}}/api/recommendations"
+      }
+    },
+    {
+      "name": "Frontend feedback",
+      "request": {
+        "method": "POST",
+        "header": [{"key": "Content-Type", "value": "application/json"}],
+        "body": {"mode": "raw", "raw": "{\n  \"customer_id\": \"42\",\n  \"product_id\": \"P003\",\n  \"action\": \"like\"\n}"},
+        "url": "{{baseUrl}}/api/feedback"
+      }
+    }
+  ]
+}
