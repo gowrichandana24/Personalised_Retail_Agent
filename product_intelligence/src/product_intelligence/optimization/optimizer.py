@@ -3,82 +3,118 @@ from .constraints import (
     filter_excluded_brands,
 )
 
+from .bundle import (
+    generate_bundles,
+    filter_bundles_by_budget,
+    rank_bundles,
+)
+
+from .diversity import (
+    diversify_products,
+)
+
+from .discovery import (
+    rank_discovery_products,
+)
+
+from .what_if import (
+    what_if_optimize,
+)
+
 
 def optimize_products(
     products,
     budget,
     excluded_brands=None,
+    diversity_limit=None,
 ):
     """
-    Main entry point for the optimization module.
+    Main product optimization pipeline.
+
+    Steps:
+    1. Apply constraints
+    2. Rank products
+    3. Apply diversity
     """
 
-    # Apply budget constraint
     candidates = filter_by_budget(
         products,
-        budget,
+        budget
     )
 
-    # Apply brand constraint
     candidates = filter_excluded_brands(
         candidates,
-        excluded_brands,
+        excluded_brands
     )
 
-    # Rank candidates by recommendation score
     candidates.sort(
-        key=lambda product: product.get("score", 0),
-        reverse=True,
+        key=lambda product:
+        product.get("score", 0),
+        reverse=True
     )
+
+    if diversity_limit:
+        candidates = diversify_products(
+            candidates,
+            diversity_limit
+        )
 
     return candidates
 
 
-if __name__ == "__main__":
+def optimize_bundles(
+    products,
+    budget,
+    min_items=2,
+    max_items=4,
+    top_k=5,
+):
+    """
+    Generate, filter and rank product bundles.
+    """
 
-    products = [
-        {
-            "id": 1,
-            "name": "Running Shoes",
-            "brand": "Nike",
-            "category": "shoes",
-            "price": 1800,
-            "score": 0.95
-        },
-        {
-            "id": 2,
-            "name": "Gym T-Shirt",
-            "brand": "Adidas",
-            "category": "clothing",
-            "price": 700,
-            "score": 0.90
-        },
-        {
-            "id": 3,
-            "name": "Water Bottle",
-            "brand": "Milton",
-            "category": "accessories",
-            "price": 400,
-            "score": 0.85
-        },
-        {
-            "id": 4,
-            "name": "Fitness Watch",
-            "brand": "Apple",
-            "category": "wearables",
-            "price": 3500,
-            "score": 0.80
-        }
-    ]
-
-    result = optimize_products(
+    bundles = generate_bundles(
         products,
-        budget=3000
+        min_items,
+        max_items
     )
 
-    for product in result:
-        print(
-            product["name"],
-            product["price"],
-            product["score"]
-        )
+    valid_bundles = filter_bundles_by_budget(
+        bundles,
+        budget
+    )
+
+    ranked_bundles = rank_bundles(
+        valid_bundles,
+        budget
+    )
+
+    return ranked_bundles[:top_k]
+
+
+def optimize_discovery(products, top_k=5):
+    """
+    Return products suitable for discovery.
+    """
+
+    ranked = rank_discovery_products(
+        products
+    )
+
+    return ranked[:top_k]
+
+
+def optimize_what_if(
+    products,
+    budget=None,
+    excluded_brands=None,
+):
+    """
+    Re-optimize after changed constraints.
+    """
+
+    return what_if_optimize(
+        products,
+        budget,
+        excluded_brands
+    )
