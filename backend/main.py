@@ -13,6 +13,7 @@ from backend.service import (
     agentic_plan,
     customer_profile_from_events,
     default_products,
+    get_digital_twin_for_customer,
     record_feedback,
     recommend,
 )
@@ -89,6 +90,17 @@ def modules() -> dict[str, Any]:
 @app.get("/api/catalog")
 def catalog() -> dict[str, Any]:
     return {"products": default_products()}
+
+
+@app.get("/api/customer/{customer_id}")
+def get_customer_profile(customer_id: str) -> dict[str, Any]:
+    """Return the digital twin for a customer from the shared interactions dataset."""
+    try:
+        return get_digital_twin_for_customer(customer_id)
+    except ValueError as error:
+        raise HTTPException(status_code=422, detail=str(error)) from error
+    except Exception as error:
+        raise HTTPException(status_code=500, detail="Failed to load customer profile") from error
 
 
 @app.post("/api/recommendations")

@@ -429,7 +429,7 @@ class RecommendationEngine:
             brand = candidate.get("brand", meta.get("brand", ""))
 
             budget_score = compute_budget_score(price, mission.budget, mission.min_budget)
-            intent_score = compute_intent_score(category, brand, mission)
+            intent_score = compute_intent_score(category, brand, mission, meta)
             preference_score = compute_preference_score(category, brand, customer_profile)
 
             w = weights or self.config.hybrid_weights

@@ -250,6 +250,8 @@ def mission_from_query(
     parsed = _as_dict(IntentAgent().analyze(query, conversation_context))
     category = parsed.get("category") or parsed.get("subcategory")
     category = _CATEGORY_ALIASES.get(str(category).lower(), category) if category else None
+    preferences = parsed.get("preferences") or []
+    style_preference = ", ".join(preferences) if preferences else ""
     mission = Mission(
         goal=parsed.get("goal") or query,
         occasion=parsed.get("occasion") or "",
@@ -265,7 +267,7 @@ def mission_from_query(
         ],
         discovery_level=discovery_level if discovery_level is not None else parsed.get("discovery_level", 0.5),
         urgency=parsed.get("urgency") or "medium",
-        style_preference=(parsed.get("preferences") or [""])[0],
+        style_preference=style_preference,
     )
     parsed["category"] = category
     parsed["budget"] = mission.budget
@@ -474,3 +476,78 @@ def record_feedback(customer_id: str, product_id: str, action: str) -> dict[str,
     ]
     _feedback_events[str(customer_id)].append(event)
     return {"status": "recorded", "customer_id": str(customer_id), **event}
+
+
+def get_digital_twin_for_customer(customer_id: str) -> dict[str, Any]:
+    """Build a digital twin for a customer from the shared interactions dataset.
+
+    Loads interactions from data/interactions.json, builds a Customer Intelligence
+    digital twin, and returns it as a dictionary suitable for the recommendation
+    pipeline.
+
+    For customers not found in the dataset, returns a cold-start profile.
+    """
+    if not INTERACTIONS_PATH.exists():
+        raise FileNotFoundError(f"Interaction data not found: {INTERACTIONS_PATH}")
+
+    with INTERACTIONS_PATH.open(encoding="utf-8") as handle:
+        interactions = json.load(handle)
+
+    # Convert simplified interactions format to RetailRocket format
+    events = []
+    for interaction in interactions:
+        events.append({
+            "timestamp": interaction.get("timestamp", ""),
+            "visitorid": interaction.get("customer_id", ""),
+            "event": interaction.get("event_type", "view"),
+            "itemid": interaction.get("product_id", ""),
+            "transactionid": interaction.get("transactionid", None),
+        })
+
+    if not events:
+        raise ValueError("No interactions found")
+
+    # Build digital twin using Customer Intelligence
+    events_df = pd.DataFrame(events)
+    events_df["datetime"] = _to_datetime(events_df["timestamp"])
+
+    customer_features = build_customer_event_features(events_df)
+
+    # Build a minimal profile (no category enrichment from item_property files)
+    profile = customer_features.copy()
+    profile["num_categories"] = 0
+    profile["max_affinity"] = 0.0
+    profile["max_recent_affinity"] = 0.0
+    profile["has_purchased"] = (profile["total_transactions"] > 0).astype(int)
+    profile["is_multi_category"] = False
+    profile["primary_persona"] = "New / Unknown"
+    profile["profile_evidence"] = "Low"
+    profile["evidence_tier"] = "Cold / New"
+
+    # Look up the specific customer
+    match = profile[profile["visitorid"].astype(str) == str(customer_id)]
+    if match.empty:
+        # Customer not in dataset — return cold-start profile
+        return {
+            "visitorid": str(customer_id),
+            "primary_persona": "New / Unknown",
+            "profile_evidence": "Low",
+            "evidence_tier": "Cold / New",
+            "total_interactions": 0,
+            "total_views": 0,
+            "total_cart_adds": 0,
+            "total_transactions": 0,
+            "unique_products": 0,
+            "recency_days": None,
+            "purchase_recency_days": None,
+            "num_categories": 0,
+            "max_affinity": 0.0,
+            "max_recent_affinity": 0.0,
+            "has_purchased": 0,
+            "is_multi_category": False,
+            "is_recently_active": False,
+            "is_highly_active": False,
+            "is_cart_heavy": False,
+        }
+
+    return {key: _json_safe(value) for key, value in match.iloc[0].to_dict().items()}

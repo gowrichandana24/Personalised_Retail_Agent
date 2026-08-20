@@ -17,7 +17,7 @@ const initialProfile = {sports:88, travel:71, electronics:62, fashion:41, discov
 const baseBundle = ['bag','jacket','bottle','organizer'];
 const API_BASE = import.meta.env.VITE_API_BASE_URL || 'http://127.0.0.1:8000';
 const accents = ['sand','blue','teal','violet','rose','orange','green','yellow'];
-const productIcons = {footwear:'👟',shirt:'👕',tshirt:'👕',jeans:'👖',pants:'👖',accessories:'👜',travel:'🎒',tech:'🔌'};
+const productIcons = {footwear:'👟',shirt:'👕',tshirt:'👕',jeans:'👖',pants:'👖',accessories:'👜',travel:'🎒',tech:'🔌',bags:'🎒',clothing:'👕',gym:'🏋️',gifts:'🎁',travel:'🎒'};
 
 function toUiProduct(item, index=0){
   const meta = item.metadata || item;
@@ -40,6 +40,14 @@ function toDigitalTwin(profile){
     top_category_1: 'footwear', top_category_affinity_1: profile.sports / 100,
     top_category_2: 'shirt', top_category_affinity_2: profile.fashion / 100
   };
+}
+
+async function fetchCustomerProfile(customerId){
+  try {
+    const response = await fetch(`${API_BASE}/api/customer/${encodeURIComponent(customerId)}`);
+    if(!response.ok) return null;
+    return await response.json();
+  } catch(e) { return null; }
 }
 
 function Icon({name,size=18}){const p={width:size,height:size,viewBox:'0 0 24 24',fill:'none',stroke:'currentColor',strokeWidth:'1.8',strokeLinecap:'round',strokeLinejoin:'round'}; const paths={
@@ -99,9 +107,11 @@ function LegacyApp(){
  async function runMission(){
    setProcessing(true); setReady(false); setApiError('');
    try {
+     const realProfile = await fetchCustomerProfile('DEMO_USER');
+     const customerProfile = realProfile || toDigitalTwin(profile);
      const response=await fetch(`${API_BASE}/api/recommendations`,{
        method:'POST', headers:{'Content-Type':'application/json'},
-      body:JSON.stringify({customer_id:'DEMO_USER',query:`${mission} Shopping style: ${style}.`,customer_profile:toDigitalTwin(profile),conversation_context:conversationContext,budget,discovery_level:discovery,top_k:8})
+      body:JSON.stringify({customer_id:'DEMO_USER',query:`${mission} Shopping style: ${style}.`,customer_profile:customerProfile,conversation_context:conversationContext,budget,discovery_level:discovery,top_k:8})
      });
      if(!response.ok){throw new Error((await response.json().catch(()=>({}))).detail || `Request failed (${response.status})`)}
      const result=await response.json();

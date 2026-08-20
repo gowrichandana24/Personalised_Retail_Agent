@@ -74,17 +74,32 @@ def compute_intent_score(
     product_category: str,
     product_brand: str,
     mission: Mission,
+    product_metadata: Optional[dict] = None,
 ) -> float:
     """Compute mission/intent fit score for a product.
+
+    Matches mission signals against category, title, description,
+    and properties.use_cases / properties.style.
 
     Args:
         product_category: Product's category.
         product_brand: Product's brand.
         mission: Current shopping mission.
+        product_metadata: Full product metadata dict (optional).
 
     Returns:
         Intent match score between 0 and 1.
     """
+    meta = product_metadata or {}
+    props = meta.get("properties", {}) if isinstance(meta.get("properties"), dict) else {}
+    use_cases = props.get("use_cases", [])
+    if isinstance(use_cases, str):
+        use_cases = [use_cases]
+    style = str(props.get("style", "")).lower()
+    title = str(meta.get("title", "")).lower()
+    description = str(meta.get("description", "")).lower()
+    searchable = f"{product_category.lower()} {title} {description} {' '.join(use_cases)} {style}"
+
     score = 0.0
     total_weight = 0.0
 
@@ -93,24 +108,44 @@ def compute_intent_score(
             c.lower() in product_category.lower()
             for c in mission.preferred_categories
         )
-        score += 0.5 if cat_match else 0.0
-        total_weight += 0.5
+        score += 0.4 if cat_match else 0.0
+        total_weight += 0.4
 
     if mission.preferred_brands:
         brand_match = any(
             b.lower() == product_brand.lower()
             for b in mission.preferred_brands
         )
-        score += 0.3 if brand_match else 0.0
-        total_weight += 0.3
+        score += 0.2 if brand_match else 0.0
+        total_weight += 0.2
 
     if mission.occasion:
-        occasion_match = mission.occasion.lower() in product_category.lower()
+        occasion_lower = mission.occasion.lower()
+        occasion_match = (
+            occasion_lower in product_category.lower()
+            or occasion_lower in searchable
+        )
         score += 0.2 if occasion_match else 0.0
         total_weight += 0.2
 
+    if mission.style_preference:
+        style_lower = mission.style_preference.lower()
+        style_match = (
+            style_lower in product_category.lower()
+            or style_lower in style
+            or any(style_lower in s for s in use_cases)
+        )
+        score += 0.1 if style_match else 0.0
+        total_weight += 0.1
+
+    if mission.goal:
+        goal_keywords = mission.goal.lower().split()
+        goal_match = any(kw in searchable for kw in goal_keywords if len(kw) > 2)
+        score += 0.1 if goal_match else 0.0
+        total_weight += 0.1
+
     if total_weight == 0:
-        return 0.5
+        return 0.3
 
     return score / total_weight
 
@@ -213,17 +248,6 @@ def hybrid_score_product(
     session_score = compute_session_score(product_id, session_ids)
     discovery_score = 0.0
 
-    breakdown = ScoreBreakdown(
-        collaborative=collaborative_score,
-        content=content_score,
-        intent=intent_score,
-        preference=preference_score,
-        budget=budget_score,
-        session=session_score,
-        popularity=popularity_score,
-        discovery=discovery_score,
-    )
-
     final = (
         weights.collaborative * collaborative_score
         + weights.content * content_score
@@ -279,7 +303,7 @@ def hybrid_score_candidates(
         price = meta.get("price", 0.0)
 
         budget_score = compute_budget_score(price, mission.budget, mission.min_budget)
-        intent_score = compute_intent_score(product_category, product_brand, mission)
+        intent_score = compute_intent_score(product_category, product_brand, mission, meta)
         preference_score = compute_preference_score(product_category, product_brand, profile)
         session_score = compute_session_score(pid, mission.session_product_ids)
 

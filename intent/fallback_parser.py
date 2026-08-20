@@ -20,7 +20,58 @@ class FallbackIntentParser:
         exclusions = []
 
         # -------------------------
-        # CATEGORY
+        # OCCASION (contextual use-case)
+        # -------------------------
+        # Detect occasion BEFORE category so contextual keywords
+        # like "beach", "party", "formal" are preserved even when
+        # no specific product category is mentioned.
+
+        if "beach" in text:
+            occasion = "beach"
+            preferences.append("outdoor")
+            preferences.append("lightweight")
+
+        elif "party" in text:
+            occasion = "party"
+            preferences.append("stylish")
+
+        elif "college" in text or "campus" in text:
+            occasion = "college"
+
+        elif "wedding" in text:
+            occasion = "wedding"
+
+        elif "birthday" in text:
+            occasion = "birthday"
+
+        elif "gym" in text or "workout" in text:
+            occasion = "gym"
+            preferences.append("sporty")
+
+        elif "travel" in text or "trip" in text or "vacation" in text:
+            occasion = "travel"
+            preferences.append("practical")
+
+        elif "office" in text or "work" in text or "professional" in text:
+            occasion = "office"
+
+        elif "formal" in text:
+            occasion = "formal"
+            preferences.append("elegant")
+
+        elif "casual" in text:
+            occasion = "casual"
+
+        elif "date" in text:
+            occasion = "date"
+            preferences.append("stylish")
+
+        elif "festival" in text or "festive" in text:
+            occasion = "festival"
+            preferences.append("premium")
+
+        # -------------------------
+        # CATEGORY (specific product type)
         # -------------------------
 
         if "running shoe" in text:
@@ -50,27 +101,11 @@ class FallbackIntentParser:
             category = "fashion"
             subcategory = "shirt"
 
+        elif "attire" in text or "outfit" in text or "clothing" in text:
+            category = "fashion"
+
         elif "gift" in text:
             category = "gifts"
-
-        # -------------------------
-        # OCCASION
-        # -------------------------
-
-        if "birthday" in text:
-            occasion = "birthday"
-
-        elif "wedding" in text:
-            occasion = "wedding"
-
-        elif "college" in text:
-            occasion = "college"
-
-        elif "gym" in text:
-            occasion = "gym"
-
-        elif "travel" in text or "trip" in text:
-            occasion = "travel"
 
         # -------------------------
         # BUDGET
@@ -79,7 +114,8 @@ class FallbackIntentParser:
         budget_patterns = [
             r"₹\s?(\d+(?:,\d+)*)",
             r"rs\.?\s?(\d+(?:,\d+)*)",
-            r"(\d+(?:\.\d+)?)\s*k"
+            r"(\d+(?:\.\d+)?)\s*k",
+            r"(?:under|below|within|max|up\s*to)\s+(\d+(?:,\d+)*)",
         ]
 
         for pattern in budget_patterns:
@@ -112,7 +148,9 @@ class FallbackIntentParser:
             "sporty",
             "minimal",
             "practical",
-            "fitness"
+            "fitness",
+            "outdoor",
+            "formal",
         ]
 
         if "walking" in text:
@@ -122,7 +160,7 @@ class FallbackIntentParser:
 
         for preference in known_preferences:
 
-            if preference in text:
+            if preference in text and preference not in preferences:
                 preferences.append(preference)
 
         # -------------------------
