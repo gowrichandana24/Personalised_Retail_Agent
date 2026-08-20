@@ -1,10 +1,30 @@
-from pathlib import Path
-import sys
+"""Customer intelligence building blocks used by the RetailMind backend."""
 
-# Project root = RetailMind_Member2
-PROJECT_ROOT = Path.cwd().parent.parent
+from .affinity import (
+    compute_historical_affinity,
+    compute_recent_affinity,
+    enrich_events_with_category,
+    load_item_category_history,
+)
+from .features import build_categorized_interaction_count, build_customer_event_features
+from .profile import (
+    add_behavioural_attributes,
+    assign_primary_persona,
+    build_digital_twin,
+    build_profile_base,
+    get_customer_profile,
+)
 
-if str(PROJECT_ROOT) not in sys.path:
-    sys.path.insert(0, str(PROJECT_ROOT))
-
-print("Project root:", PROJECT_ROOT)
+__all__ = [
+    "add_behavioural_attributes",
+    "assign_primary_persona",
+    "build_categorized_interaction_count",
+    "build_customer_event_features",
+    "build_digital_twin",
+    "build_profile_base",
+    "compute_historical_affinity",
+    "compute_recent_affinity",
+    "enrich_events_with_category",
+    "get_customer_profile",
+    "load_item_category_history",
+]

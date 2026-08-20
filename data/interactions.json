@@ -1,0 +1,13 @@
+[
+  {"customer_id":"seed-1","product_id":"P001","event_type":"view","timestamp":"2025-06-01"},
+  {"customer_id":"seed-1","product_id":"P002","event_type":"purchase","timestamp":"2025-06-02"},
+  {"customer_id":"seed-1","product_id":"P008","event_type":"like","timestamp":"2025-06-03"},
+  {"customer_id":"seed-2","product_id":"P003","event_type":"view","timestamp":"2025-06-04"},
+  {"customer_id":"seed-2","product_id":"P004","event_type":"purchase","timestamp":"2025-06-05"},
+  {"customer_id":"seed-2","product_id":"P011","event_type":"addtocart","timestamp":"2025-06-06"},
+  {"customer_id":"seed-3","product_id":"P005","event_type":"purchase","timestamp":"2025-06-07"},
+  {"customer_id":"seed-3","product_id":"P009","event_type":"view","timestamp":"2025-06-08"},
+  {"customer_id":"seed-3","product_id":"P010","event_type":"like","timestamp":"2025-06-09"},
+  {"customer_id":"seed-4","product_id":"P006","event_type":"view","timestamp":"2025-06-10"},
+  {"customer_id":"seed-4","product_id":"P012","event_type":"purchase","timestamp":"2025-06-11"}
+]

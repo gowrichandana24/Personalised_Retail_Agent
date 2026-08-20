@@ -40,20 +40,29 @@ import re
 
 from langgraph.graph import StateGraph, END
 
-from state import RetailState
-
-from tools import (
-    get_customer_profile,
-    get_recommendations,
-    rank_products,
-    create_bundle,
-    explain_recommendation,
-    quality_check,
-)
-
-from gemini_agent import (
-    understand_shopping_request,
-)
+try:
+    # Package imports used by the integrated FastAPI backend.
+    from .state import RetailState
+    from .tools import (
+        get_customer_profile,
+        get_recommendations,
+        rank_products,
+        create_bundle,
+        explain_recommendation,
+        quality_check,
+    )
+    from .gemini_agent import understand_shopping_request
+except ImportError:  # pragma: no cover - supports `python agent.py` too.
+    from state import RetailState
+    from tools import (
+        get_customer_profile,
+        get_recommendations,
+        rank_products,
+        create_bundle,
+        explain_recommendation,
+        quality_check,
+    )
+    from gemini_agent import understand_shopping_request
 
 
 # ============================================================

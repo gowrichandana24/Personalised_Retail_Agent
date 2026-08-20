@@ -13,7 +13,7 @@ from typing import Optional
 from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
 
-from agent import run_agent
+from .agent import run_agent
 
 
 # ============================================================

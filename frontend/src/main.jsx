@@ -15,6 +15,32 @@ const products = [
 
 const initialProfile = {sports:88, travel:71, electronics:62, fashion:41, discovery:65, price:'Medium'};
 const baseBundle = ['bag','jacket','bottle','organizer'];
+const API_BASE = import.meta.env.VITE_API_BASE_URL || 'http://127.0.0.1:8000';
+const accents = ['sand','blue','teal','violet','rose','orange','green','yellow'];
+const productIcons = {footwear:'👟',shirt:'👕',tshirt:'👕',jeans:'👖',pants:'👖',accessories:'👜',travel:'🎒',tech:'🔌'};
+
+function toUiProduct(item, index=0){
+  const meta = item.metadata || item;
+  const category = String(meta.category || 'Recommended');
+  const breakdown = item.score_breakdown || {};
+  const evidence = item.evidence || ['Matched to your shopping mission'];
+  return {
+    id:String(item.product_id || item.id), name:meta.title || meta.name || 'Recommended product', category,
+    price:Number(meta.price || item.price || 0), score:Math.round(Number(item.final_score ?? item.score ?? .5)*100),
+    image:productIcons[category.toLowerCase()] || '✨', reasons:evidence,
+    novelty:Math.round(Number(breakdown.discovery ?? .5)*100), badge:item.rank===1?'Best match':'Personalized',
+    accent:accents[index % accents.length], breakdown
+  };
+}
+
+function toDigitalTwin(profile){
+  return {
+    total_interactions: profile.sports + profile.travel + profile.electronics + profile.fashion,
+    total_views: profile.travel, total_transactions: 1, is_multi_category: true,
+    top_category_1: 'footwear', top_category_affinity_1: profile.sports / 100,
+    top_category_2: 'shirt', top_category_affinity_2: profile.fashion / 100
+  };
+}
 
 function Icon({name,size=18}){const p={width:size,height:size,viewBox:'0 0 24 24',fill:'none',stroke:'currentColor',strokeWidth:'1.8',strokeLinecap:'round',strokeLinejoin:'round'}; const paths={
   spark:<><path d="m12 3-1.2 5.3L6 10l4.8 1.7L12 17l1.2-5.3L18 10l-4.8-1.7L12 3Z"/><path d="m19 16-.6 2.4L16 19l2.4.6L19 22l.6-2.4L22 19l-2.4-.6L19 16Z"/></>,
@@ -36,7 +62,7 @@ function Icon({name,size=18}){const p={width:size,height:size,viewBox:'0 0 24 24
   search:<><circle cx="10.8" cy="10.8" r="6.8"/><path d="m16 16 5 5"/></>
 }; return <svg {...p}>{paths[name]||paths.spark}</svg>}
 
-function App(){
+function LegacyApp(){
  const [view,setView]=useState('mission');
  const [mission,setMission]=useState('I’m going on a weekend trip. I have ₹5,000 and want something practical but a little different from what I normally buy.');
  const [processing,setProcessing]=useState(false);
@@ -52,29 +78,54 @@ function App(){
  const [feedback,setFeedback]=useState('');
  const [simulating,setSimulating]=useState(false);
  const [menu,setMenu]=useState(false);
+ const [liveProducts,setLiveProducts]=useState(null);
+ const [liveBundle,setLiveBundle]=useState(null);
+ const [conversationContext,setConversationContext]=useState(null);
+ const [apiError,setApiError]=useState('');
 
  const displayed=useMemo(()=>{
-   let arr=[...products];
-   if(budget<=3000) arr=arr.filter(p=>p.price<=1600);
+   let arr=[...(liveProducts || products)];
+   if(!liveProducts && budget<=3000) arr=arr.filter(p=>p.price<=1600);
    if(discovery>.7) arr.sort((a,b)=>b.novelty-a.novelty);
    else if(discovery<.3) arr.sort((a,b)=>a.novelty-b.novelty);
    if(style==='Premium') arr.sort((a,b)=>b.score-a.score || b.price-a.price);
    return arr;
- },[budget,discovery,style]);
+ },[budget,discovery,style,liveProducts]);
  const bundleIds=budget<=3000?['bag','bottle','organizer']:baseBundle;
- const bundle=products.filter(p=>bundleIds.includes(p.id));
+ const bundle=liveBundle || products.filter(p=>bundleIds.includes(p.id));
  const total=bundle.reduce((s,p)=>s+p.price,0);
  const remaining=Math.max(0,budget-total);
 
- function runMission(){setProcessing(true);setReady(false);setTimeout(()=>{setProcessing(false);setReady(true)},1500)}
- function simulate(){setSimulating(true);setTimeout(()=>setSimulating(false),650)}
- function doFeedback(id,type){
+ async function runMission(){
+   setProcessing(true); setReady(false); setApiError('');
+   try {
+     const response=await fetch(`${API_BASE}/api/recommendations`,{
+       method:'POST', headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({customer_id:'DEMO_USER',query:`${mission} Shopping style: ${style}.`,customer_profile:toDigitalTwin(profile),conversation_context:conversationContext,budget,discovery_level:discovery,top_k:8})
+     });
+     if(!response.ok){throw new Error((await response.json().catch(()=>({}))).detail || `Request failed (${response.status})`)}
+     const result=await response.json();
+     setLiveProducts((result.recommendations || []).map(toUiProduct));
+     setLiveBundle((result.bundle || []).map(toUiProduct));
+    setConversationContext(result.intent || conversationContext);
+     setFeedback(`Live pipeline completed: ${(result.pipeline || []).join(' → ')}`);
+   } catch(error) {
+     setApiError(`Could not reach the API at ${API_BASE}. ${error.message}`);
+   } finally {
+     setProcessing(false); setReady(true); setTimeout(()=>setFeedback(''),3200);
+   }
+ }
+ async function simulate(){setSimulating(true); await runMission(); setSimulating(false)}
+ async function doFeedback(id,type){
    if(type==='like'){setLiked(x=>x.includes(id)?x.filter(y=>y!==id):[...x,id]);setProfile(p=>({...p,travel:Math.min(99,p.travel+2),discovery:Math.min(99,p.discovery+1)}));setFeedback('Preference updated — RetailMind is adapting your recommendations.');}
    if(type==='save'){setSaved(x=>x.includes(id)?x.filter(y=>y!==id):[...x,id]);setFeedback('Saved to your mission collection.');}
    if(type==='cart'){setFeedback('Added to mission bundle.');}
    if(type==='skip'){setFeedback('Got it — this signal will reduce similar recommendations.');}
+   try { await fetch(`${API_BASE}/api/feedback`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({customer_id:'DEMO_USER',product_id:id,action:type})}); }
+   catch(error) { setApiError(`Feedback was saved locally, but could not reach the API at ${API_BASE}.`); }
    setTimeout(()=>setFeedback(''),2200)
  }
+ const activeProducts=liveProducts || products;
  return <div className="app">
    <aside className="sidebar">
      <div className="brand"><div className="brandMark"><Icon name="spark" size={19}/></div><div><b>RetailMind</b><span>Autonomous shopping agent</span></div></div>
@@ -91,9 +142,10 @@ function App(){
    </aside>
    <main className="main">
      <header className="topbar"><div><div className="eyebrow">{view==='mission'?'SHOPPING MISSION':view==='judge'?'SYSTEM OBSERVABILITY':view.toUpperCase()}</div><h1>{view==='mission'?'Your shopping mission':view==='judge'?'RetailMind intelligence':'RetailMind'}</h1></div><div className="topActions"><div className="live"><span/> Live decision engine</div><button className="iconBtn" onClick={()=>setTrace(true)} title="Decision trace"><Icon name="bolt" size={17}/></button><div className="avatar small">GK</div></div></header>
+     {apiError&&<div className="changeNote"><Icon name="info" size={14}/><div><b>API connection issue</b><span>{apiError}</span></div></div>}
      {view==='mission'&&<MissionView mission={mission} setMission={setMission} processing={processing} ready={ready} runMission={runMission} budget={budget} setBudget={setBudget} discovery={discovery} setDiscovery={setDiscovery} style={style} setStyle={setStyle} displayed={displayed} bundle={bundle} total={total} remaining={remaining} selected={selected} setSelected={setSelected} doFeedback={doFeedback} liked={liked} simulate={simulate} simulating={simulating} profile={profile} setTrace={setTrace}/>} 
-     {view==='discover'&&<DiscoverView products={products} setSelected={setSelected} doFeedback={doFeedback} />}
-     {view==='saved'&&<SavedView products={products.filter(p=>saved.includes(p.id))} setSelected={setSelected} doFeedback={doFeedback}/>} 
+     {view==='discover'&&<DiscoverView products={activeProducts} setSelected={setSelected} doFeedback={doFeedback} />}
+     {view==='saved'&&<SavedView products={activeProducts.filter(p=>saved.includes(p.id))} setSelected={setSelected} doFeedback={doFeedback}/>}
      {view==='profile'&&<ProfileView profile={profile}/>} 
      {view==='judge'&&<JudgeView profile={profile} setTrace={setTrace}/>} 
    </main>
@@ -145,4 +197,4 @@ function Metric({title,value,note}){return <div className="metricCard"><span>{ti
 function Funnel({label,value,max}){return <div className="funnelBar"><div><span>{label}</span><b>{value}</b></div><div><span style={{width:(value/max*100)+'%'}}/></div></div>}
 function Quality({name,value,pct}){return <div className="qualityRow"><div><span>{name}</span><b>{value}</b></div><div className="qualityBar"><span style={{width:pct+'%'}}/></div></div>}
 
-createRoot(document.getElementById('root')).render(<App/>);
+createRoot(document.getElementById('root')).render(<LegacyApp/>);

@@ -31,10 +31,10 @@ from typing import Any, Dict
 from google import genai
 from pydantic import BaseModel, Field
 
-from config import (
-    GEMINI_API_KEY,
-    GEMINI_MODEL,
-)
+try:
+    from .config import GEMINI_API_KEY, GEMINI_MODEL
+except ImportError:  # pragma: no cover - supports `python gemini_agent.py`.
+    from config import GEMINI_API_KEY, GEMINI_MODEL
 
 
 # ============================================================

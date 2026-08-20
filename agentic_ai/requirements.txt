@@ -7,5 +7,3 @@ langchain-google-genai
 python-dotenv
 pydantic
 google-genai
-pydantic
-python-dotenv

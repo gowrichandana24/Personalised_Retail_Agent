@@ -5,14 +5,16 @@ from .schemas import ShoppingIntent
 
 class FallbackIntentParser:
 
-    def parse(self, message: str) -> ShoppingIntent:
+    def parse(self, message: str, context: dict | None = None) -> ShoppingIntent:
 
-        text = message.lower()
+        # A follow-up correction should replace the earlier mission signals.
+        text = re.split(r"\b(?:actually|instead|rather)\b", message.lower())[-1]
 
-        category = None
+        context = context or {}
+        category = context.get("category")
         subcategory = None
-        occasion = None
-        budget = None
+        occasion = context.get("occasion")
+        budget = context.get("budget")
 
         preferences = []
         exclusions = []
@@ -112,6 +114,11 @@ class FallbackIntentParser:
             "practical",
             "fitness"
         ]
+
+        if "walking" in text:
+            preferences.append("walking")
+        if "everyday" in text or "daily use" in text:
+            preferences.append("everyday use")
 
         for preference in known_preferences:
 

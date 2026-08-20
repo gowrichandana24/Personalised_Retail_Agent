@@ -23,7 +23,7 @@ class IntentAgent:
             print(f"Reason: {error}")
             print("✓ Local fallback parser enabled")
 
-    def analyze(self, message: str) -> ShoppingIntent:
+    def analyze(self, message: str, context: dict | None = None) -> ShoppingIntent:
 
         # Try Gemini first
         if self.gemini_parser:
@@ -43,7 +43,7 @@ class IntentAgent:
                 print("→ Switching to fallback parser")
 
         # Use local fallback
-        result = self.fallback_parser.parse(message)
+        result = self.fallback_parser.parse(message, context)
 
         print("✓ Intent extracted using local parser")
 

@@ -1,4 +1,4 @@
-from constraints import (
+from .constraints import (
     filter_by_budget,
     filter_excluded_brands,
 )
