@@ -248,7 +248,16 @@ def mission_from_query(
 ) -> tuple[Mission, dict[str, Any]]:
     """Translate Intent Agent output to Recommendation ML's Mission schema."""
     parsed = _as_dict(IntentAgent().analyze(query, conversation_context))
+    query_text = query.lower()
     category = parsed.get("category") or parsed.get("subcategory")
+    subcategory = str(parsed.get("subcategory") or "").lower()
+    # Product type is more specific than a broad LLM category. This keeps
+    # "laptop backpack" in bags instead of allowing a laptop accessory to win.
+    if "backpack" in query_text or "laptop bag" in query_text or "laptop tote" in query_text:
+        category = "bags"
+        parsed["subcategory"] = "laptop backpack" if "backpack" in query_text else "laptop bag"
+    elif subcategory in {"laptop bag", "backpack", "travel bag"}:
+        category = "bags"
     category = _CATEGORY_ALIASES.get(str(category).lower(), category) if category else None
     preferences = parsed.get("preferences") or []
     style_preference = ", ".join(preferences) if preferences else ""
@@ -330,7 +339,11 @@ def _product_intelligence_scores(
         category=intent.get("category"),
         budget=budget,
         discovery_level=discovery,
-        keywords=[intent.get("goal", ""), *intent.get("preferences", [])],
+        keywords=[
+            intent.get("goal", ""),
+            intent.get("subcategory", ""),
+            *intent.get("preferences", []),
+        ],
         exclude_categories=mission.excluded_categories,
         strict_budget=budget is not None,
     )
@@ -348,6 +361,37 @@ def _product_intelligence_scores(
         for row in ranked.itertuples()
     }
     return scores, evidence
+
+
+def _retrieve_relevant_candidates(
+    products: list[dict[str, Any]], intent: dict[str, Any]
+) -> list[dict[str, Any]]:
+    """Restrict ranking to a clear occasion/use-case when the catalog supports it."""
+    occasion = str(intent.get("occasion") or "").strip().lower()
+    if not occasion:
+        return products
+
+    matches = []
+    for product in products:
+        properties = product.get("properties", {})
+        use_cases = properties.get("use_cases", []) if isinstance(properties, dict) else []
+        if isinstance(use_cases, str):
+            use_cases = [use_cases]
+        searchable = " ".join(
+            [
+                str(product.get("title", "")),
+                str(product.get("description", "")),
+                str(product.get("category", "")),
+                " ".join(str(value) for value in use_cases),
+            ]
+        ).lower()
+        if occasion in searchable:
+            matches.append(product)
+
+    # Keep the full catalog for vague or unsupported occasions. A clear
+    # occasion with several catalog matches should not be diluted by unrelated
+    # popularity or diversity candidates.
+    return matches if len(matches) >= 3 else products
 
 
 def _build_bundle(recommendations: list[dict[str, Any]], budget: float) -> list[dict[str, Any]]:
@@ -417,7 +461,9 @@ def recommend(
             "agentic_plan": orchestration,
         }
     profile = profile_from_digital_twin(customer_id, digital_twin)
-    candidates = candidate_products or default_products()
+    candidates = _retrieve_relevant_candidates(
+        candidate_products or default_products(), intent
+    )
     ml_result = recommendation_engine().recommend(
         customer_id=str(customer_id),
         mission=mission,

@@ -1,26 +1,6 @@
 import os
-from dotenv import load_dotenv
 
-BASE_DIR = os.path.dirname(
-    os.path.abspath(__file__)
-)
-
-ENV_PATH = os.path.join(
-    BASE_DIR,
-    ".env"
-)
-
-load_dotenv(ENV_PATH)
-
-
-GEMINI_API_KEY = os.getenv(
-    "GEMINI_API_KEY"
-)
-
-GEMINI_MODEL = os.getenv(
-    "GEMINI_MODEL",
-    "gemini-2.5-flash"
-)
+from backend.config import GEMINI_API_KEY, GEMINI_MODEL
 
 
 MAX_RECOMMENDATIONS = int(

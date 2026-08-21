@@ -54,6 +54,12 @@ py -m venv .venv
 .\.venv\Scripts\python.exe -m uvicorn backend.main:app --reload
 ```
 
+To enable Gemini-powered intent understanding, copy
+`agentic_ai/.env.example` to `agentic_ai/.env` and set `GEMINI_API_KEY`.
+The backend reads that same credential for both the agentic and intent
+integrations. Never commit the `.env` file. Without a key, the local intent
+parser remains available as a deterministic fallback.
+
 Open `http://127.0.0.1:8000/docs` to see and try the API.
 
 ## Start the frontend

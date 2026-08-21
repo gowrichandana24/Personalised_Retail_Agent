@@ -1,33 +1,30 @@
-import os
-
-from dotenv import load_dotenv
 from google import genai
 
+from backend.config import GEMINI_API_KEY, GEMINI_MODEL
 from .schemas import ShoppingIntent
 from .prompts import INTENT_SYSTEM_PROMPT
-
-
-load_dotenv()
-
 
 class GeminiIntentParser:
 
     def __init__(self):
-        api_key = os.getenv("GEMINI_API_KEY")
-
-        if not api_key:
+        if not GEMINI_API_KEY:
             raise ValueError(
-                "GEMINI_API_KEY is not configured."
+                "GEMINI_API_KEY is not configured in agentic_ai/.env or .env."
             )
 
         self.client = genai.Client(
-            api_key=api_key
+            api_key=GEMINI_API_KEY
         )
 
-    def parse(self, user_message: str) -> ShoppingIntent:
+    def parse(self, user_message: str, context: dict | None = None) -> ShoppingIntent:
+        context_text = context or {}
 
         prompt = f"""
 {INTENT_SYSTEM_PROMPT}
+
+PREVIOUS CONVERSATION INTENT:
+
+{context_text}
 
 CUSTOMER MESSAGE:
 
@@ -35,7 +32,7 @@ CUSTOMER MESSAGE:
 """
 
         response = self.client.models.generate_content(
-            model="gemini-2.5-flash",
+            model=GEMINI_MODEL,
             contents=prompt,
             config={
                 "response_mime_type": "application/json",

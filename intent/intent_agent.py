@@ -30,7 +30,7 @@ class IntentAgent:
 
             try:
 
-                result = self.gemini_parser.parse(message)
+                result = self.gemini_parser.parse(message, context)
 
                 print("✓ Intent extracted using Gemini")
 
